@@ -1,0 +1,41 @@
+{
+  "ignoreUnresolved": [
+    [
+      "react-native-vector-icons/Ionicons",
+      [
+        "screens\\Intro\\Weight\\Weight.js",
+        "screens\\Intro\\ActivityLevel\\ActivityLevelScreen.js",
+        "screens\\Intro\\Age\\age.js",
+        "screens\\Intro\\WaterConsumptionScreen\\WaterConsumptionScreen.js",
+        "screens\\Profile\\ShopRegistration\\ShopRegistrationScreen1.js",
+        "screens\\Profile\\ShopRegistration\\ShopRegistrationScreen2.js",
+        "screens\\Profile\\Tips\\DailyTips.js",
+        "screens\\Profile\\Tips\\ForActionDays.js",
+        "screens\\Profile\\Tips\\HotWeatherTips.js",
+        "screens\\Profile\\Tips\\HealthWellness.js"
+      ]
+    ]
+  ],
+  "ignoreUnused": [
+    "@react-navigation/stack",
+    "expo-background-fetch",
+    "expo-splash-screen",
+    "expo-task-manager",
+    "react",
+    "react-dom",
+    "react-native",
+    "react-native-appwrite",
+    "react-native-background-fetch",
+    "react-native-google-places-autocomplete",
+    "react-native-modal-datetime-picker",
+    "react-native-push-notification",
+    "react-native-toggle-switch",
+    "react-native-url-polyfill",
+    "react-native-video",
+    "react-navigation-stack",
+    "undefined"
+  ],
+  "ignoreUnimported": [
+    "babel.config.js"
+  ]
+}
