@@ -42,127 +42,135 @@ import EditShopScreen from '../screens/Profile/ShopRegistration/EditShopScreen';
 const Stack = createNativeStackNavigator();
 const BottomTab = createBottomTabNavigator();
 
-function HomeOverview() {
+const HomeOverview = ({ route }) => {
+  const { userId } = route.params || {};
+  console.log('HomeOverview userId:', userId);
+
   return (
-    <BottomTab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarStyle: {
-          height: 70,
-          backgroundColor: "white",
-          borderTopColor: "transparent",
-          shadowColor: "#000",
-          shadowOpacity: 0.1,
-          shadowOffset: { width: 0, height: 10 },
-          shadowRadius: 20,
-          elevation: 20,
-        },
-        tabBarShowLabel: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+      <BottomTab.Navigator
+          screenOptions={({ route }) => ({
+              tabBarStyle: {
+                  height: 70,
+                  backgroundColor: "white",
+                  borderTopColor: "transparent",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.1,
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowRadius: 20,
+                  elevation: 20,
+              },
+              tabBarShowLabel: false,
+              tabBarIcon: ({ focused, color, size }) => {
+                  let iconName;
 
-          if (route.name === "Home") {
-            iconName = focused ? "home" : "home-outline";
-            color = focused ? "#00aaff" : "#8e8e93";
-          } else if (route.name === "Location") {
-            iconName = focused ? "location" : "location-outline";
-            color = focused ? "#00aaff" : "#8e8e93";
-          } else if (route.name === "Alarm") {
-            iconName = focused ? "alarm" : "alarm-outline";
-            color = focused ? "#00aaff" : "#8e8e93";
-          } else if (route.name === "Settings") {
-            iconName = focused ? "analytics" : "analytics-outline";
-            color = focused ? "#00aaff" : "#8e8e93";
-          } else if (route.name === "Profile") {
-            iconName = focused ? "person" : "person-outline";
-            color = focused ? "#00aaff" : "#8e8e93";
-          } else if (route.name === "Bot") {
-            iconName = focused ? "chatbubble" : "chatbubble-outline";
-            color = focused ? "#00aaff" : "#8e8e93";
-          }
+                  if (route.name === "Home") {
+                      iconName = focused ? "home" : "home-outline";
+                      color = focused ? "#00aaff" : "#8e8e93";
+                  } else if (route.name === "Location") {
+                      iconName = focused ? "location" : "location-outline";
+                      color = focused ? "#00aaff" : "#8e8e93";
+                  } else if (route.name === "Alarm") {
+                      iconName = focused ? "alarm" : "alarm-outline";
+                      color = focused ? "#00aaff" : "#8e8e93";
+                  } else if (route.name === "Settings") {
+                      iconName = focused ? "analytics" : "analytics-outline";
+                      color = focused ? "#00aaff" : "#8e8e93";
+                  } else if (route.name === "Profile") {
+                      iconName = focused ? "person" : "person-outline";
+                      color = focused ? "#00aaff" : "#8e8e93";
+                  } else if (route.name === "Bot") {
+                      iconName = focused ? "chatbubble" : "chatbubble-outline";
+                      color = focused ? "#00aaff" : "#8e8e93";
+                  }
 
-          return (
-            <View style={focused && route.name !== "Alarm" ? styles.focusedTab : null}>
-              <Ionicons name={iconName} size={focused ? 30 : 24} color={color} />
-            </View>
-          );
-        },
-        tabBarActiveTintColor: GlobalStyles.colors?.primary500 || "#00aaff",
-        tabBarInactiveTintColor: "#8e8e93",
-      })}
-    >
-      <BottomTab.Screen 
-        name="Home" 
-        component={Home}
-        options={{
-          title: 'Daily Water Consumption',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#00aaff',
-          },
-        }}
-      />
-      <BottomTab.Screen 
-        name="Location" 
-        component={LocationMapScreen}
-        options={{
-          title: 'Find Pure Water',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#00aaff',
-          },
-        }}
-      />
-      <BottomTab.Screen
-        name="Alarm"
-        component={NotificationScreen}
-        options={{
-          title: 'Reminder',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#00aaff',
-          },
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.floatingIcon}>
-              <Ionicons name="alarm" size={30} color={focused ? "#ffffff" : "#8e8e93"} />
-            </View>
-          ),
-        }}
-      />
-      <BottomTab.Screen
-        name="Settings"
-        component={WeeklyProgress}
-        options={{
-          title: 'Weekly Progress',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#00aaff',
-          },
-        }}
-      />
-      <BottomTab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{
-          title: 'Profile',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#00aaff',
-          },
-        }}
-      />
-    </BottomTab.Navigator>
+                  return (
+                      <View style={focused && route.name !== "Alarm" ? styles.focusedTab : null}>
+                          <Ionicons name={iconName} size={focused ? 30 : 24} color={color} />
+                      </View>
+                  );
+              },
+              tabBarActiveTintColor: GlobalStyles.colors?.primary500 || "#00aaff",
+              tabBarInactiveTintColor: "#8e8e93",
+          })}
+      >
+          <BottomTab.Screen 
+              name="Home" 
+              component={Home}
+              initialParams={{ userId }}
+              options={{
+                  title: 'Daily Water Consumption',
+                  headerTitleAlign: 'center',
+                  headerTitleStyle: {
+                      fontSize: 20,
+                      fontWeight: 'bold',
+                      color: '#00aaff',
+                  },
+              }}
+          />
+          <BottomTab.Screen 
+              name="Location" 
+              component={LocationMapScreen}
+              initialParams={{ userId }}
+              options={{
+                  title: 'Find Pure Water',
+                  headerTitleAlign: 'center',
+                  headerTitleStyle: {
+                      fontSize: 20,
+                      fontWeight: 'bold',
+                      color: '#00aaff',
+                  },
+              }}
+          />
+          <BottomTab.Screen
+              name="Alarm"
+              component={NotificationScreen}
+              initialParams={{ userId }}
+              options={{
+                  title: 'Reminder',
+                  headerTitleAlign: 'center',
+                  headerTitleStyle: {
+                      fontSize: 20,
+                      fontWeight: 'bold',
+                      color: '#00aaff',
+                  },
+                  tabBarIcon: ({ focused }) => (
+                      <View style={styles.floatingIcon}>
+                          <Ionicons name="alarm" size={30} color={focused ? "#ffffff" : "#8e8e93"} />
+                      </View>
+                  ),
+              }}
+          />
+          <BottomTab.Screen
+              name="Settings"
+              component={WeeklyProgress}
+              initialParams={{ userId }}
+              options={{
+                  title: 'Weekly Progress',
+                  headerTitleAlign: 'center',
+                  headerTitleStyle: {
+                      fontSize: 20,
+                      fontWeight: 'bold',
+                      color: '#00aaff',
+                  },
+              }}
+          />
+          <BottomTab.Screen 
+              name="Profile" 
+              component={ProfileScreen}
+              initialParams={{ userId }}
+              options={{
+                  title: 'Profile',
+                  headerTitleAlign: 'center',
+                  headerTitleStyle: {
+                      fontSize: 20,
+                      fontWeight: 'bold',
+                      color: '#00aaff',
+                  },
+              }}
+          />
+      </BottomTab.Navigator>
   );
-}
+};
 
 const styles = StyleSheet.create({
   focusedTab: {

@@ -1,66 +1,80 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet , StatusBar, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ImageBackground } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { GlobalStyles } from "../../../constants/styles";
 import Icon from 'react-native-vector-icons/Ionicons';
 import Button from '../../../components/Buttons/Button';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const activityLevels = [
-  'Sedentary',
-  'Light Active',
-  'Moderate Active',
-  'Very Active',
-  'Extra Active'
+    'Sedentary',
+    'Light Active',
+    'Moderate Active',
+    'Very Active',
+    'Extra Active'
 ];
 
 const ActivityLevelScreen = () => {
-  const [selectedLevel, setSelectedLevel] = useState(0);
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { age, weight, selectedGender } = route.params; // Receive age, weight, and selectedGender
+    const [selectedLevel, setSelectedLevel] = useState(0);
+    const navigation = useNavigation();
+    const route = useRoute();
+    const { age, weight, selectedGender, userId } = route.params || {};
 
-  const continueHandler = () => {
-    navigation.navigate('WaterConsumptionScreen', { age, weight, selectedGender, activityLevel: activityLevels[selectedLevel] });
-  };
-  const goBackHandler = () => {
-    navigation.goBack();
-  };
+    console.log('ActivityLevelScreen params:', { age, weight, selectedGender, userId });
 
-  const backgroundImage = require("../../../assets/splash.png"); // Background image path
+    const continueHandler = async () => {
+        let effectiveUserId = userId;
+        if (!effectiveUserId) {
+            console.warn('userId is missing in route.params, attempting to fetch from AsyncStorage');
+            effectiveUserId = await AsyncStorage.getItem('accountId');
+            if (!effectiveUserId) {
+                console.error('userId is missing in ActivityLevelScreen and AsyncStorage');
+                return;
+            }
+        }
+        console.log('Navigating to WaterConsumption with userId:', effectiveUserId);
+        navigation.navigate('WaterConsumptionScreen', { age, weight, selectedGender, activityLevel: activityLevels[selectedLevel], userId: effectiveUserId });
+    };
 
-  return (
-    <ImageBackground source={backgroundImage} style={styles.background} imageStyle={styles.backgroundImage}>
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" translucent={false} backgroundColor="#fff" />
-        <Text style={styles.title}>Activity Level</Text>
-        <Text style={styles.subtitle}>
-          Your activity level affects your water intake. Whether you're an athlete or have a more relaxed lifestyle, we've got you covered.
-        </Text>
-        <View style={styles.optionsWrapper}>
-          {activityLevels.map((level, index) => (
-            <TouchableOpacity
-              key={level}
-              style={styles.optionContainer}
-              onPress={() => setSelectedLevel(index)}
-            >
-              <View style={[styles.radio, selectedLevel === index && styles.radioSelected]} />
-              <Text style={styles.optionText}>{level}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+    const goBackHandler = () => {
+        navigation.navigate('Age', { weight, selectedGender, userId });
+    };
 
-        <View style={styles.buttonContainer}>
-          <Button buttonStyles={styles.button} onPress={goBackHandler}>
-            <Icon name="chevron-back-outline" size={24} color={GlobalStyles.colors.white} />
-          </Button>
+    const backgroundImage = require("../../../assets/splash.png");
 
-          <Button buttonStyles={styles.button} onPress={continueHandler}>
-            <Text style={styles.buttonText}>NEXT</Text>
-          </Button>
-        </View>
-      </View>
-    </ImageBackground>
-  );
+    return (
+        <ImageBackground source={backgroundImage} style={styles.background} imageStyle={styles.backgroundImage}>
+            <View style={styles.container}>
+                <StatusBar barStyle="dark-content" translucent={false} backgroundColor="#fff" />
+                <Text style={styles.title}>Activity Level</Text>
+                <Text style={styles.subtitle}>
+                    Your activity level affects your water intake. Whether you're an athlete or have a more relaxed lifestyle, we've got you covered.
+                </Text>
+                <View style={styles.optionsWrapper}>
+                    {activityLevels.map((level, index) => (
+                        <TouchableOpacity
+                            key={level}
+                            style={styles.optionContainer}
+                            onPress={() => setSelectedLevel(index)}
+                        >
+                            <View style={[styles.radio, selectedLevel === index && styles.radioSelected]} />
+                            <Text style={styles.optionText}>{level}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                <View style={styles.buttonContainer}>
+                    <Button buttonStyles={styles.button} onPress={goBackHandler}>
+                        <Icon name="chevron-back-outline" size={24} color={GlobalStyles.colors.white} />
+                    </Button>
+
+                    <Button buttonStyles={styles.button} onPress={continueHandler}>
+                        <Text style={styles.buttonText}>NEXT</Text>
+                    </Button>
+                </View>
+            </View>
+        </ImageBackground>
+    );
 };
 
 export default ActivityLevelScreen;
@@ -98,7 +112,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
-    marginTop:20
+    marginTop: 20
   },
   radio: {
     height: 24,

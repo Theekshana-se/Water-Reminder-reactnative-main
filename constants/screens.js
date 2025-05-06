@@ -4,6 +4,8 @@ export const GENDER_SCREEN = "gender";
 
 export const ACTIVITY_SCREEN = "activity";
 
-export const ACTIVITYLEVEL_SCREEN = "activitylevel"
+export const ACTIVITYLEVEL_SCREEN = "activitylevel";
 
-export const Age ="age"
+export const Age ="age";
+
+export const HOME_OVERVIEW_SCREEN = 'HomeOverview';

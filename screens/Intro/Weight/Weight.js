@@ -5,81 +5,81 @@ import WheelPickerExpo from "react-native-wheel-picker-expo";
 import Button from "../../../components/Buttons/Button";
 import Icon from 'react-native-vector-icons/Ionicons';
 import { GlobalStyles } from "../../../constants/styles";
-import { updateUserWeight } from '../../../lib/appwrite'; // Import the function
-import Navigation from "../../../navigation/Navigation";
+import { updateUserWeight } from '../../../lib/appwrite';
 
-const WEIGHTS = Array.from({ length: 81 }, (_, i) => i + 40); // Generates weights from 40kg to 120kg
+const WEIGHTS = Array.from({ length: 81 }, (_, i) => i + 40);
 
-const Weight = ({ selectedGender }) => {
-  const [weight, setWeight] = useState(48); // Start with 48kg as in the example image
-  const navigation = useNavigation();
+const Weight = ({ selectedGender, userId }) => {
+    const [weight, setWeight] = useState(48);
+    const navigation = useNavigation();
 
-  const nextPageHandler = async () => {
-    try {
-      await updateUserWeight(weight);
-      console.log('Weight saved successfully');
-      navigation.navigate('Age', { weight, selectedGender });
-    } catch (error) {
-      console.error('Failed to save weight:', error);
-    }
-  };
+    const nextPageHandler = async () => {
+        try {
+            if (!userId) {
+                console.error('userId is missing in Weight screen');
+                return;
+            }
+            await updateUserWeight(weight, userId);
+            console.log('Weight saved successfully, navigating to Age with userId:', userId);
+            navigation.navigate('Age', { weight, selectedGender, userId });
+        } catch (error) {
+            console.error('Failed to save weight:', error);
+        }
+    };
 
-  const goBackHandler = () => {
-    navigation.navigate('GenderScreen');
-  };
+    const goBackHandler = () => {
+        navigation.navigate('GenderScreen');
+    };
 
-  const weightChangeHandler = ({ item }) => {
-    setWeight(item.value);
-  };
+    const weightChangeHandler = ({ item }) => {
+        setWeight(item.value);
+    };
 
-  //const backgroundImage = require("../../../assets/weightscreen.png"); // Background image path
+    return (
+        <ImageBackground style={styles.background} imageStyle={styles.backgroundImage}>
+            <View style={styles.container}>
+                <StatusBar barStyle="dark-content" translucent={false} backgroundColor="#fff" />
+                <Text style={styles.title}>Weight</Text>
+                <Text style={styles.subtitle}>
+                    Our weight plays a key role in determining how much water your body needs daily.
+                </Text>
+                <Text style={styles.subtitle}>
+                    Accurate weight information helps us customize your water intake recommendations.
+                </Text>
 
-  return (
-    <ImageBackground style={styles.background} imageStyle={styles.backgroundImage}>
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" translucent={false} backgroundColor="#fff" />
-        <Text style={styles.title}>Weight</Text>
-        <Text style={styles.subtitle}>
-          Our weight plays a key role in determining how much water your body needs daily.
-        </Text>
-        <Text style={styles.subtitle}>
-          Accurate weight information helps us customize your water intake recommendations.
-        </Text>
+                <View style={styles.weightContainer}>
+                    <Text style={styles.weightText}>{weight}</Text>
+                    <Text style={styles.kgText}>KG</Text>
+                </View>
 
-        <View style={styles.weightContainer}>
-          <Text style={styles.weightText}>{weight}</Text>
-          <Text style={styles.kgText}>KG</Text>
-        </View>
+                <View style={styles.imageContainer}>
+                    <WheelPickerExpo
+                        backgroundColor="#F2F2F2"
+                        height={180}
+                        width={60}
+                        renderItem={(props) => (
+                            <View>
+                                <Text style={styles.pickerText}>{props.label}</Text>
+                            </View>
+                        )}
+                        initialSelectedIndex={8}
+                        onChange={weightChangeHandler}
+                        items={WEIGHTS.map((value) => ({ label: value, value: value }))}
+                    />
+                </View>
 
-        <View style={styles.imageContainer}>
-          <WheelPickerExpo
-            backgroundColor="#F2F2F2"
-            height={180}
-            width={60}
-            renderItem={(props) => (
-              <View>
-                <Text style={styles.pickerText}>{props.label}</Text>
-              </View>
-            )}
-            initialSelectedIndex={8} // Start with the 48kg as the selected value
-            onChange={weightChangeHandler}
-            items={WEIGHTS.map((value) => ({ label: value, value: value }))}
-          />
-        </View>
+                <View style={styles.buttonContainer}>
+                    <Button buttonStyles={styles.button} onPress={goBackHandler}>
+                        <Icon name="chevron-back-outline" size={24} color={GlobalStyles.colors.white} />
+                    </Button>
 
-        {/* Button container with back and next buttons */}
-        <View style={styles.buttonContainer}>
-          <Button buttonStyles={styles.button} onPress={goBackHandler}>
-            <Icon name="chevron-back-outline" size={24} color={GlobalStyles.colors.white} />
-          </Button>
-
-          <Button buttonStyles={styles.button} onPress={nextPageHandler}>
-            <Text style={styles.buttonText}>Next</Text>
-          </Button>
-        </View>
-      </View>
-    </ImageBackground>
-  );
+                    <Button buttonStyles={styles.button} onPress={nextPageHandler}>
+                        <Text style={styles.buttonText}>Next</Text>
+                    </Button>
+                </View>
+            </View>
+        </ImageBackground>
+    );
 };
 
 export default Weight;
