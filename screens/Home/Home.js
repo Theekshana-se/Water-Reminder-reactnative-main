@@ -1,11 +1,24 @@
-import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, FlatList, Animated, Dimensions, BackHandler, PanResponder, ActivityIndicator } from "react-native";
-import { ACTIVITY_KEY, WEIGHT_KEY } from "../../constants/storage";
-import { calcDailyGoal } from "../../utils/Drinks";
-import UIModal from "../../components/UI/UIModal";
-import { useNavigation } from "@react-navigation/native";
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  FlatList,
+  Animated,
+  Dimensions,
+  BackHandler,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  Alert,
+} from 'react-native';
+import { ACTIVITY_KEY, WEIGHT_KEY } from '../../constants/storage';
+import { calcDailyGoal } from '../../utils/Drinks';
+import UIModal from '../../components/UI/UIModal';
+import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import NotificationScreen from '../../screens/NotificationScreen/NotificationScreen'; 
+import NotificationScreen from '../../screens/NotificationScreen/NotificationScreen';
 import WeeklyProgress from '../../screens/WeeklyProgress/WeeklyProgress';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle } from 'react-native-svg';
@@ -37,14 +50,7 @@ const WaterProgress = ({ percentage, goal, current }) => {
   return (
     <View style={styles.waterProgressContainer}>
       <Svg width="160" height="160" viewBox="0 0 160 160" style={styles.svg}>
-        <Circle
-          cx="80"
-          cy="80"
-          r={radius}
-          fill="none"
-          stroke="#E2F4FF"
-          strokeWidth={strokeWidth}
-        />
+        <Circle cx="80" cy="80" r={radius} fill="none" stroke="#E2F4FF" strokeWidth={strokeWidth} />
         <AnimatedCircle
           cx="80"
           cy="80"
@@ -84,25 +90,67 @@ const Home = ({ userId }) => {
   const [drinkProgress, setDrinkProgress] = useState(0);
   const [selectedQuantity, setSelectedQuantity] = useState(0);
   const [selectedBeverage, setSelectedBeverage] = useState('Coffee');
-  const [beverageOptions, setBeverageOptions] = useState(['Coffee', 'Yogurt', 'Tea']);
+  const [beverageOptions, setBeverageOptions] = useState([]);
   const [dailyGoal, setDailyGoal] = useState(null);
   const [baseDailyGoal, setBaseDailyGoal] = useState(null);
   const [isFullAnimationPlaying, setIsFullAnimationPlaying] = useState(false);
   const [currentTemperature, setCurrentTemperature] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [selectedBeverageIndex, setSelectedBeverageIndex] = useState(null);
   const celebrationAnimation = useRef(null);
   const navigation = useNavigation();
 
   const quantities = [
-    { id: 1, value: 150, text: "150ml" },
-    { id: 2, value: 200, text: "200ml" },
-    { id: 3, value: 250, text: "250ml" },
-    { id: 4, value: 300, text: "300ml" },
-    { id: 5, value: 350, text: "350ml" },
-    { id: 6, value: 400, text: "400ml" },
+    { id: 1, value: 150, text: '150ml' },
+    { id: 2, value: 200, text: '200ml' },
+    { id: 3, value: 250, text: '250ml' },
+    { id: 4, value: 300, text: '300ml' },
+    { id: 5, value: 350, text: '350ml' },
+    { id: 6, value: 400, text: '400ml' },
   ];
 
+  const BEVERAGE_STORAGE_KEY = 'beverageOptions';
+
+  // Load beverages from AsyncStorage
+  const loadBeverages = async () => {
+    try {
+      const storedBeverages = await AsyncStorage.getItem(BEVERAGE_STORAGE_KEY);
+      if (storedBeverages) {
+        const parsedBeverages = JSON.parse(storedBeverages);
+        setBeverageOptions(parsedBeverages);
+        if (parsedBeverages.length > 0) {
+          setSelectedBeverage(parsedBeverages[0].name);
+        }
+      } else {
+        // Default beverages
+        const defaultBeverages = [
+          { name: 'Coffee', emoji: '☕' },
+          { name: 'Yogurt', emoji: '🍶' },
+          { name: 'Tea', emoji: '🍵' },
+        ];
+        await AsyncStorage.setItem(BEVERAGE_STORAGE_KEY, JSON.stringify(defaultBeverages));
+        setBeverageOptions(defaultBeverages);
+        setSelectedBeverage(defaultBeverages[0].name);
+      }
+    } catch (error) {
+      console.error('Error loading beverages:', error);
+      Alert.alert('Error', 'Failed to load beverages.');
+    }
+  };
+
+  // Save beverages to AsyncStorage
+  const saveBeverages = async (beverages) => {
+    try {
+      await AsyncStorage.setItem(BEVERAGE_STORAGE_KEY, JSON.stringify(beverages));
+    } catch (error) {
+      console.error('Error saving beverages:', error);
+      Alert.alert('Error', 'Failed to save beverages.');
+    }
+  };
+
+  // Fetch weather and user data
   const getItem = async (key) => {
     try {
       const value = await AsyncStorage.getItem(key);
@@ -123,17 +171,12 @@ const Home = ({ userId }) => {
 
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-      console.log('Location:', latitude, longitude);
-
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m`;
-      console.log('Fetching from:', url);
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}, Response: ${await response.text()}`);
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const data = await response.json();
-      console.log('Weather Response:', data);
-
       return data.current.temperature_2m;
     } catch (error) {
       console.error('Error fetching weather data:', error.message);
@@ -143,11 +186,9 @@ const Home = ({ userId }) => {
 
   const adjustDailyGoalBasedOnTemperature = (baseGoal, temp) => {
     if (temp === null) return baseGoal;
-
     const LOW_TEMP_THRESHOLD = 20;
     const HIGH_TEMP_THRESHOLD = 35;
     const ADJUSTMENT_PERCENTAGE = 0.1;
-
     if (temp < LOW_TEMP_THRESHOLD) {
       return Math.round(baseGoal * (1 - ADJUSTMENT_PERCENTAGE));
     } else if (temp > HIGH_TEMP_THRESHOLD) {
@@ -160,7 +201,6 @@ const Home = ({ userId }) => {
   const setBaseDailyGoalOnRegistration = async (goal) => {
     try {
       await AsyncStorage.setItem('baseDailyGoal', goal.toString());
-      console.log('Base daily goal set in AsyncStorage:', goal);
     } catch (error) {
       console.error('Error setting base daily goal:', error);
     }
@@ -177,11 +217,9 @@ const Home = ({ userId }) => {
           const user = await getCurrentUser();
           accountId = user.$id;
           await AsyncStorage.setItem('accountId', accountId);
-          console.log('Fetched accountId from current user:', accountId);
         }
 
         if (!accountId) {
-          console.error('No account ID found');
           setError('User not logged in. Please log in again.');
           setIsLoading(false);
           navigation.navigate('Login');
@@ -197,7 +235,6 @@ const Home = ({ userId }) => {
           const activity = await getItem(ACTIVITY_KEY);
           baseGoal = calcDailyGoal(weight, activity);
           if (!baseGoal) {
-            console.error('Failed to calculate daily goal');
             setError('Please set your daily water goal.');
             setIsLoading(false);
             navigation.navigate('WaterConsumption');
@@ -227,7 +264,8 @@ const Home = ({ userId }) => {
     };
 
     fetchUserDailyGoal();
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => true);
+    loadBeverages();
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => backHandler.remove();
   }, [userId, navigation]);
 
@@ -257,7 +295,6 @@ const Home = ({ userId }) => {
       if (accountId) {
         await updateUserWaterConsumption(newConsumption, dailyGoal, accountId);
       } else {
-        console.error('No accountId for updating water consumption');
         setError('Failed to update water intake. Please log in again.');
       }
     }
@@ -268,30 +305,74 @@ const Home = ({ userId }) => {
     confirmModalHandler(selectedItem);
   };
 
+  // CRUD Handlers
   const addBeverageHandler = () => {
     navigation.navigate('AddBeverageScreen', {
       addBeverage: (newBeverage) => {
         setBeverageOptions((prevBeverages) => {
-          if (prevBeverages.length >= 3) {
-            return [...prevBeverages.slice(1), newBeverage];
-          } else {
-            return [...prevBeverages, newBeverage];
-          }
+          const updatedBeverages = [...prevBeverages, newBeverage];
+          saveBeverages(updatedBeverages);
+          return updatedBeverages;
         });
-      }
+      },
     });
   };
 
+  const editBeverageHandler = (beverage, index) => {
+    navigation.navigate('AddBeverageScreen', {
+      addBeverage: () => {},
+      editBeverage: (updatedBeverage, idx) => {
+        setBeverageOptions((prevBeverages) => {
+          const updatedBeverages = [...prevBeverages];
+          updatedBeverages[idx] = updatedBeverage;
+          saveBeverages(updatedBeverages);
+          return updatedBeverages;
+        });
+      },
+      beverageToEdit: beverage,
+      index,
+    });
+  };
+
+  const deleteBeverageHandler = (index) => {
+    Alert.alert(
+      'Delete Beverage',
+      'Are you sure you want to delete this beverage?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setBeverageOptions((prevBeverages) => {
+              const updatedBeverages = prevBeverages.filter((_, i) => i !== index);
+              saveBeverages(updatedBeverages);
+              if (selectedBeverage === prevBeverages[index].name && updatedBeverages.length > 0) {
+                setSelectedBeverage(updatedBeverages[0].name);
+              } else if (updatedBeverages.length === 0) {
+                setSelectedBeverage(null);
+              }
+              return updatedBeverages;
+            });
+            setActionModalVisible(false);
+          },
+        },
+      ]
+    );
+  };
+
   const selectBeverageHandler = (beverage) => {
-    setSelectedBeverage(beverage);
+    setSelectedBeverage(beverage.name);
     openModalHandler();
   };
 
+  const handleLongPress = (beverage, index) => {
+    setSelectedBeverageIndex(index);
+    setActionModalVisible(true);
+  };
+
   const renderQuantityItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.quantityButton}
-      onPress={() => selectQuantityHandler(item.value)}
-    >
+    <TouchableOpacity style={styles.quantityButton} onPress={() => selectQuantityHandler(item.value)}>
       <Text style={styles.quantityButtonText}>{item.text}</Text>
     </TouchableOpacity>
   );
@@ -303,7 +384,6 @@ const Home = ({ userId }) => {
     if (accountId) {
       await updateUserWaterConsumption(0, dailyGoal, accountId);
     } else {
-      console.error('No accountId for resetting water consumption');
       setError('Failed to reset water intake. Please log in again.');
     }
   };
@@ -326,10 +406,7 @@ const Home = ({ userId }) => {
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.setGoalButton}
-            onPress={() => navigation.navigate('WaterConsumption')}
-          >
+          <TouchableOpacity style={styles.setGoalButton} onPress={() => navigation.navigate('WaterConsumption')}>
             <Text style={styles.setGoalButtonText}>Set Daily Goal</Text>
           </TouchableOpacity>
         </View>
@@ -338,35 +415,30 @@ const Home = ({ userId }) => {
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>No daily goal set. Please set your goal.</Text>
-          <TouchableOpacity
-            style={styles.setGoalButton}
-            onPress={() => navigation.navigate('WaterConsumption')}
-          >
+          <TouchableOpacity style={styles.setGoalButton} onPress={() => navigation.navigate('WaterConsumption')}>
             <Text style={styles.setGoalButtonText}>Set Daily Goal</Text>
           </TouchableOpacity>
         </View>
       )}
-      <Text style={styles.beveragePrompt}>How much {selectedBeverage.toLowerCase()} do you want to drink?</Text>
-      
+      <Text style={styles.beveragePrompt}>
+        How much {selectedBeverage ? selectedBeverage.toLowerCase() : 'beverage'} do you want to drink?
+      </Text>
+
       <View style={styles.beverageSelection}>
         {beverageOptions.map((beverage, index) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={index}
             style={styles.beverageButton}
             onPress={() => selectBeverageHandler(beverage)}
+            onLongPress={() => handleLongPress(beverage, index)}
           >
-            <View style={[styles.beverageIcon, selectedBeverage === beverage && styles.selectedBeverageIcon]}>
-              <Text style={styles.beverageEmoji}>
-                {beverage === 'Coffee' ? '☕' : beverage === 'Yogurt' ? '🍶' : beverage === 'Milk' ? '🥛' : beverage === 'Tea' ? '🍵' : beverage === 'Orange Juice' ? '🍊' : beverage === 'Red Wine' ? '🍷' : '🥤'}
-              </Text>
+            <View style={[styles.beverageIcon, selectedBeverage === beverage.name && styles.selectedBeverageIcon]}>
+              <Text style={styles.beverageEmoji}>{beverage.emoji}</Text>
             </View>
-            <Text style={styles.beverageText}>{beverage}</Text>
+            <Text style={styles.beverageText}>{beverage.name}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity 
-          style={styles.beverageButton}
-          onPress={addBeverageHandler}
-        >
+        <TouchableOpacity style={styles.beverageButton} onPress={addBeverageHandler}>
           <View style={styles.addBeverageIcon}>
             <Feather name="plus" size={24} color="white" />
           </View>
@@ -382,13 +454,13 @@ const Home = ({ userId }) => {
           numColumns={2}
         />
       </View>
-      
+
       <TouchableOpacity style={styles.resetButton} onPress={resetWaterProgress}>
         <Feather name="refresh-cw" size={24} color="white" />
       </TouchableOpacity>
 
-      <NotificationScreen drinkProgress={drinkProgress} /> 
-      <WeeklyProgress drinkProgress={drinkProgress} userId={userId} /> 
+      <NotificationScreen drinkProgress={drinkProgress} />
+      <WeeklyProgress drinkProgress={drinkProgress} userId={userId} />
 
       <UIModal
         isVisible={isModalVisible}
@@ -396,6 +468,37 @@ const Home = ({ userId }) => {
         onClose={closeModalHandler}
         onConfirm={confirmModalHandler}
       />
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={actionModalVisible}
+        onRequestClose={() => setActionModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Beverage Options</Text>
+            <Pressable
+              style={styles.modalButton}
+              onPress={() => {
+                setActionModalVisible(false);
+                editBeverageHandler(beverageOptions[selectedBeverageIndex], selectedBeverageIndex);
+              }}
+            >
+              <Text style={styles.modalButtonText}>Edit Beverage</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.modalButton, styles.deleteButton]}
+              onPress={() => deleteBeverageHandler(selectedBeverageIndex)}
+            >
+              <Text style={styles.modalButtonText}>Delete Beverage</Text>
+            </Pressable>
+            <Pressable style={styles.modalButton} onPress={() => setActionModalVisible(false)}>
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {isFullAnimationPlaying && (
         <LottieView
@@ -412,25 +515,6 @@ const Home = ({ userId }) => {
 };
 
 const styles = StyleSheet.create({
-  floatingButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    zIndex: 2000,
-  },
-  buttonCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#00aaff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
   container: {
     flex: 1,
     alignItems: 'center',
@@ -499,16 +583,18 @@ const styles = StyleSheet.create({
     color: 'black',
     marginTop: 20,
     marginBottom: 10,
-    textAlign: "center",
+    textAlign: 'center',
   },
   beverageSelection: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
     marginTop: 10,
+    flexWrap: 'wrap',
   },
   beverageButton: {
-    alignItems: "center",
+    alignItems: 'center',
+    margin: 5,
   },
   beverageIcon: {
     width: 50,
@@ -602,6 +688,40 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: '#2196F3',
+    padding: 10,
+    borderRadius: 5,
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  deleteButton: {
+    backgroundColor: '#D32F2F',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

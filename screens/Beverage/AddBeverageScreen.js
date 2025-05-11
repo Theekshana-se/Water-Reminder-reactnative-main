@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { GlobalStyles } from '../../constants/styles';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 const AddBeverageScreen = ({ route }) => {
   const [selectedBeverage, setSelectedBeverage] = useState(null);
-  const [hydrationLevel, setHydrationLevel] = useState('');
   const navigation = useNavigation();
-  const { addBeverage } = route.params; // Callback to update the beverage list
+  const { addBeverage, editBeverage, beverageToEdit, index } = route.params || {};
 
   const beverageOptions = [
     { name: 'Water', emoji: '💧' },
@@ -21,26 +20,35 @@ const AddBeverageScreen = ({ route }) => {
     { name: 'Yogurt', emoji: '🍶' },
   ];
 
+  // Pre-fill form if editing
+  useEffect(() => {
+    if (beverageToEdit) {
+      setSelectedBeverage(beverageToEdit.name);
+    }
+  }, [beverageToEdit]);
+
   const handleSave = () => {
-    if (selectedBeverage && hydrationLevel) {
-      addBeverage(selectedBeverage); // Call the function passed from the main screen
-      navigation.goBack(); // Navigate back to the main screen
+    if (selectedBeverage) {
+      const selectedOption = beverageOptions.find((b) => b.name === selectedBeverage);
+      const beverageData = {
+        name: selectedBeverage,
+        emoji: selectedOption ? selectedOption.emoji : '🥤',
+      };
+
+      if (editBeverage && beverageToEdit) {
+        editBeverage(beverageData, index);
+      } else {
+        addBeverage(beverageData);
+      }
+      navigation.goBack();
     } else {
-      alert('Please select a beverage and enter the hydration level.');
+      Alert.alert('Error', 'Please select a beverage.');
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Back Button and Title */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back-outline" size={30} color="#00aaff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Add your Beverages</Text>
-      </View>
-
-      <Text style={styles.subTitle}>Enter Beverage Type</Text>
+      <Text style={styles.subTitle}>Select Beverage Type</Text>
       <View style={styles.beverageGrid}>
         {beverageOptions.map((beverage, index) => (
           <TouchableOpacity
@@ -57,17 +65,8 @@ const AddBeverageScreen = ({ route }) => {
         ))}
       </View>
 
-      <Text style={styles.subTitle}>Enter Hydration Level</Text>
-      <TextInput
-        style={styles.input}
-        value={hydrationLevel}
-        onChangeText={setHydrationLevel}
-        placeholder="Enter hydration level"
-        keyboardType="numeric"
-      />
-
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>SAVE</Text>
+        <Text style={styles.saveButtonText}>{beverageToEdit ? 'UPDATE' : 'SAVE'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -80,19 +79,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: 'white',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 20,
-    width: '100%',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#00aaff',
-    marginLeft: 10,
   },
   subTitle: {
     fontSize: 18,
