@@ -37,7 +37,9 @@ import Weight from '../screens/Intro/Weight/Weight';
 import ContactUsScreen from "../screens/Profile/contactus/ContactUsScreen";
 import ChatScreen from '../screens/chatbot/ChatScreen';
 import EditShopScreen from '../screens/Profile/ShopRegistration/EditShopScreen';
-
+import DiseaseWaterTracker from '../screens/diseases/DiseaseWaterTracker';
+import HydrationPlanTracker from '../screens/diseases/HydrationPlanTracker';
+import HydrationReportScreen from '../screens/diseases/HydrationReportScreen';
 
 const Stack = createNativeStackNavigator();
 const BottomTab = createBottomTabNavigator();
@@ -231,6 +233,9 @@ export default function Navigation() {
         <Stack.Screen name="ContactUsScreen" component={ContactUsScreen} options={{ headerShown: true, title: 'Contact Us', headerTitleAlign: 'center', headerTitleStyle: { fontSize: 20, fontWeight: 'bold', color: '#00aaff' } }} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: true, title: 'Aqua bot', headerTitleAlign: 'center', headerTitleStyle: { fontSize: 20, fontWeight: 'bold', color: '#00aaff' } }} />
         <Stack.Screen name="EditShopScreen" component={EditShopScreen} />
+        <Stack.Screen name="DiseaseWaterTracker" component={DiseaseWaterTracker} />
+        <Stack.Screen name="HydrationPlanTracker" component={HydrationPlanTracker} />
+        <Stack.Screen name="HydrationReportScreen" component={HydrationReportScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

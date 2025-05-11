@@ -129,6 +129,16 @@ const ProfileScreen = () => {
             <Text style={styles.modalText}>Aqua ring</Text>
           </TouchableOpacity>
           
+          <TouchableOpacity onPress={() => { navigation.navigate('DiseaseWaterTracker'); toggleModal(); }}>
+            <Text style={styles.modalText}>disease</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => { navigation.navigate('HydrationPlanTracker'); toggleModal(); }}>
+            <Text style={styles.modalText}>HydrationPlanTracker</Text>
+          </TouchableOpacity>
+
+          
+
         </View>
       </Modal>
 
