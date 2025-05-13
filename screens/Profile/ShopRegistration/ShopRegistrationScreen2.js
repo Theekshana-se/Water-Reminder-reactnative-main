@@ -56,8 +56,7 @@ const ShopRegistrationScreen2 = ({ route }) => {
       console.log('Creating shop:', { finalShopData, isWaterBottleShop });
       const newShop = await createShop(finalShopData, isWaterBottleShop);
       ToastAndroid.show('Shop created successfully!', ToastAndroid.SHORT);
-      navigation.navigate('LocationMapScreen', { refresh: true });
-      //navigation.goBack({ refresh: true });
+      navigation.navigate('HomeOverview', { refresh: true });
     } catch (error) {
       console.error('Error creating shop:', error);
       Alert.alert('Error', 'Failed to create shop. Please try again.');

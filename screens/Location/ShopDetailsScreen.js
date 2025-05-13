@@ -95,8 +95,8 @@ const ShopDetailsScreen = ({ route }) => {
               });
               await deleteShop(shop.$id, shop.isWaterBottleShop);
               ToastAndroid.show('Shop deleted successfully!', ToastAndroid.SHORT);
-              //navigation.navigate('LocationMapScreen', { refresh: true });
-              navigation.goBack({ refresh: true });
+              navigation.navigate('HomeOverview', { refresh: true });
+              //navigation.goBack({ refresh: true });
             } catch (error) {
               console.error('Error deleting shop:', {
                 message: error.message,

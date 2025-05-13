@@ -118,7 +118,7 @@ const ProfileScreen = () => {
           <TouchableOpacity onPress={() => { navigation.navigate('DailyTips'); toggleModal(); }}>
             <Text style={styles.modalText}>Daily Tips</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { navigation.navigate('ShopRegistrationScreen1'); toggleModal(); }}>
+          <TouchableOpacity onPress={() => { navigation.navigate('LocationMapScreen'); toggleModal(); }}>
             <Text style={styles.modalText}>Join with Us</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { navigation.navigate('ContactUsScreen'); toggleModal(); }}>
