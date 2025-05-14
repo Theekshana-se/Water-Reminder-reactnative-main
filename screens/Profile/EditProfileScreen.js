@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, ScrollView } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { updateProfilePicture, updateUserWeight, updateUserAge, updateWakeUpTime, updateBedtime, updateUserEmailAndPhone } from '../../lib/appwrite';
+import { updateProfilePicture, updateUserWeight, updateUserAge, updateWakeUpTime, updateBedtime, updateUserEmailAndPhone, updateUserName } from '../../lib/appwrite';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons'; // Importing Ionicons for back button
 
@@ -36,6 +36,7 @@ const EditProfileScreen = () => {
     try {
       // Save all updated fields to Appwrite
       if (profilePic) await updateProfilePicture(profilePic);
+      await updateUserName(name);
       await updateUserEmailAndPhone(email);
       await updateUserWeight(weight);
       await updateUserAge(age);
