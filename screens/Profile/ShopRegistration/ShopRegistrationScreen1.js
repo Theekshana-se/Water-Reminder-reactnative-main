@@ -1,309 +1,248 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import * as ImagePicker from 'expo-image-picker';
-import { Storage, Account, ID } from 'appwrite';
-import { config, client } from '../../../lib/appwrite';
 
-const ShopRegistrationScreen1 = () => {
+const ShopRegistrationScreen1 = ({ route }) => {
+  const { isWaterBottleShop } = route.params;
   const navigation = useNavigation();
-  const storage = new Storage(client);
-  const account = new Account(client);
-
-  const [shopName, setShopName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [address, setAddress] = useState('');
-  const [hours, setHours] = useState('');
-  const [license, setLicense] = useState('');
-  const [image, setImage] = useState('');
-  const [verificationImage, setVerificationImage] = useState(null);
-  const [shopType, setShopType] = useState('waterBottle');
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    hours: '',
+    license: '',
+  });
+  const [errors, setErrors] = useState({
+    phone: '',
+    email: '',
+  });
   const [isLoading, setIsLoading] = useState(false);
 
-  const checkUserSession = async () => {
-    try {
-      const session = await account.get();
-      console.log('User session:', session);
-      return session;
-    } catch (error) {
-      console.error('No active session:', error);
-      return null;
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setErrors((prev) => ({ ...prev, email: 'Email is required' }));
+      return false;
     }
+    if (!email.includes('@')) {
+      setErrors((prev) => ({ ...prev, email: 'Email must contain an @ symbol' }));
+      return false;
+    }
+    if (!email.includes('.')) {
+      setErrors((prev) => ({ ...prev, email: 'Email must contain a . symbol' }));
+      return false;
+    }
+    if (!emailRegex.test(email)) {
+      setErrors((prev) => ({ ...prev, email: 'Please enter a valid email address' }));
+      return false;
+    }
+    setErrors((prev) => ({ ...prev, email: '' }));
+    return true;
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setVerificationImage(result.assets[0].uri);
+  const validatePhone = (phone) => {
+    const phoneRegex = /^\d{10}$/;
+    if (!phone) {
+      setErrors((prev) => ({ ...prev, phone: 'Phone number is required' }));
+      return false;
     }
+    if (!phoneRegex.test(phone)) {
+      setErrors((prev) => ({ ...prev, phone: 'Phone number must be exactly 10 digits' }));
+      return false;
+    }
+    setErrors((prev) => ({ ...prev, phone: '' }));
+    return true;
   };
 
-  const uploadImage = async (uri) => {
-    try {
-      const user = await checkUserSession();
-      if (!user) {
-        throw new Error('Please log in to upload images.');
-      }
-      const response = await storage.createFile(config.storageId, ID.unique(), uri);
-      const fileUrl = `${config.endpoint}/storage/buckets/${config.storageId}/files/${response.$id}/view?project=${config.projectId}`;
-      return fileUrl;
-    } catch (error) {
-      console.error('Image upload failed:', error);
-      throw new Error(error.message || 'Failed to upload image');
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    
+    if (field === 'email') {
+      validateEmail(value);
+    } else if (field === 'phone') {
+      // Only allow digits and limit to 10 characters
+      const cleanedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+      setFormData((prev) => ({ ...prev, phone: cleanedValue }));
+      validatePhone(cleanedValue);
     }
   };
 
   const handleNext = async () => {
-    if (!shopName || !email || !phoneNumber || !address) {
-      Alert.alert('Error', 'Please fill in all required fields (Shop Name, Email, Phone Number, Address).');
-      return;
-    }
+    const isNameValid = formData.name.trim() !== '';
+    const isAddressValid = formData.address.trim() !== '';
+    const isPhoneValid = validatePhone(formData.phone);
+    const isEmailValid = validateEmail(formData.email);
 
-    const user = await checkUserSession();
-    if (!user) {
-      Alert.alert('Authentication Required', 'Please log in to continue.', [
-        { text: 'OK', onPress: () => navigation.navigate('ShopRegistrationScreen2') }, // Adjust to your login screen
-      ]);
+    if (!isNameValid || !isAddressValid || !isPhoneValid || !isEmailValid) {
+      Alert.alert('Error', 'Please fill in all required fields correctly.');
       return;
     }
 
     setIsLoading(true);
     try {
-      let imageUrl = image || 'https://example.com/default-shop.jpg';
-      if (verificationImage) {
-        imageUrl = await uploadImage(verificationImage);
-      }
       navigation.navigate('ShopRegistrationScreen2', {
-        shopName,
-        email,
-        phoneNumber,
-        address,
-        hours,
-        license,
-        image: imageUrl,
-        shopType,
-        owner: user.$id, // Pass user ID for relationship (optional)
+        shopData: formData,
+        isWaterBottleShop,
       });
     } catch (error) {
-      Alert.alert('Error', `Failed to process image: ${error.message}`);
+      Alert.alert('Error', 'Failed to proceed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} disabled={isLoading}>
-          <Icon name="arrow-back" size={24} color="#00aaff" />
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#1D4ED8" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shop Registration (1/2)</Text>
+        <Text style={styles.headerTitle}>
+          {isWaterBottleShop ? 'Register Water Bottle Shop' : 'Register Filling Station'}
+        </Text>
       </View>
 
-      <Text style={styles.subTitle}>Please fill in your shop details</Text>
-
-      <View style={styles.inputContainer}>
-        <Text>Shop Name *</Text>
+      <View style={styles.form}>
+        <Text style={styles.label}>Shop Name *</Text>
         <TextInput
-          style={styles.input}
-          value={shopName}
-          onChangeText={setShopName}
-          placeholder="Water Shop Matara"
-          editable={!isLoading}
+          style={[styles.input, formData.name === '' && styles.inputError]}
+          value={formData.name}
+          onChangeText={(text) => handleInputChange('name', text)}
+          placeholder="Enter shop name"
         />
-      </View>
 
-      <View style={styles.inputContainer}>
-        <Text>Email *</Text>
+        <Text style={styles.label}>Address *</Text>
         <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="shop@example.com"
+          style={[styles.input, formData.address === '' && styles.inputError]}
+          value={formData.address}
+          onChangeText={(text) => handleInputChange('address', text)}
+          placeholder="Enter address"
+        />
+
+        <Text style={styles.label}>Phone Number *</Text>
+        <TextInput
+          style={[styles.input, errors.phone && styles.inputError]}
+          value={formData.phone}
+          onChangeText={(text) => handleInputChange('phone', text)}
+          placeholder="Enter 10-digit phone number"
+          keyboardType="number-pad"
+          maxLength={10}
+        />
+        {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+
+        <Text style={styles.label}>Email *</Text>
+        <TextInput
+          style={[styles.input, errors.email && styles.inputError]}
+          value={formData.email}
+          onChangeText={(text) => handleInputChange('email', text)}
+          placeholder="Enter email"
           keyboardType="email-address"
-          editable={!isLoading}
+          autoCapitalize="none"
         />
-      </View>
+        {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-      <View style={styles.inputContainer}>
-        <Text>Phone Number *</Text>
+        <Text style={styles.label}>Operating Hours</Text>
         <TextInput
           style={styles.input}
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          placeholder="0772811676"
-          keyboardType="phone-pad"
-          editable={!isLoading}
+          value={formData.hours}
+          onChangeText={(text) => handleInputChange('hours', text)}
+          placeholder="e.g., Open until 10:30 PM"
         />
-      </View>
 
-      <View style={styles.inputContainer}>
-        <Text>Address *</Text>
+        <Text style={styles.label}>License Number</Text>
         <TextInput
           style={styles.input}
-          value={address}
-          onChangeText={setAddress}
-          placeholder="No 12, Galle Rd, Matara"
-          editable={!isLoading}
+          value={formData.license}
+          onChangeText={(text) => handleInputChange('license', text)}
+          placeholder="e.g., CFA/BW/01/2021-01"
         />
-      </View>
 
-      <View style={styles.inputContainer}>
-        <Text>Operating Hours</Text>
-        <TextInput
-          style={styles.input}
-          value={hours}
-          onChangeText={setHours}
-          placeholder="Open until 10:30 PM"
-          editable={!isLoading}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text>License Number</Text>
-        <TextInput
-          style={styles.input}
-          value={license}
-          onChangeText={setLicense}
-          placeholder="CFA/BW/01/2021-01"
-          editable={!isLoading}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text>Shop Image URL (optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={image}
-          onChangeText={setImage}
-          placeholder="https://example.com/shop.jpg"
-          editable={!isLoading}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text>Select Shop Type</Text>
-        <View style={styles.shopTypeContainer}>
-          <TouchableOpacity
-            style={[styles.shopTypeButton, shopType === 'waterBottle' && styles.activeShopType]}
-            onPress={() => setShopType('waterBottle')}
-            disabled={isLoading}
-          >
-            <Text style={styles.shopTypeText}>Water Bottle Shop</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.shopTypeButton, shopType === 'fillingStation' && styles.activeShopType]}
-            onPress={() => setShopType('fillingStation')}
-            disabled={isLoading}
-          >
-            <Text style={styles.shopTypeText}>Filling Station</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text>Upload Verification Image (optional)</Text>
-        <TouchableOpacity style={styles.uploadContainer} onPress={pickImage} disabled={isLoading}>
-          {verificationImage ? (
-            <Image source={{ uri: verificationImage }} style={styles.uploadIcon} />
-          ) : (
-            <Image source={require('../../../assets/upload.jpeg')} style={styles.uploadIcon} />
-          )}
+        <TouchableOpacity
+          style={[styles.nextButton, isLoading && styles.disabledButton]}
+          onPress={handleNext}
+          disabled={isLoading}
+        >
+          <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>
       </View>
+    </  
 
-      <TouchableOpacity style={styles.button} onPress={handleNext} disabled={isLoading}>
-        <Text style={styles.buttonText}>{isLoading ? 'PROCESSING...' : 'NEXT'}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+
+View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f7',
-    padding: 20,
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00aaff',
-    marginLeft: 10,
+    fontWeight: '600',
+    color: '#1D4ED8',
+    marginLeft: 12,
   },
-  subTitle: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 20,
+  form: {
+    padding: 16,
   },
-  inputContainer: {
-    marginBottom: 20,
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginTop: 5,
-    backgroundColor: '#fff',
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
   },
-  shopTypeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 5,
+  inputError: {
+    borderColor: '#EF4444',
   },
-  shopTypeButton: {
-    flex: 1,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginBottom: 12,
+  },
+  nextButton: {
+    backgroundColor: '#1D4ED8',
+    padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 5,
+    marginTop: 8,
   },
-  activeShopType: {
-    backgroundColor: '#00aaff',
-    borderColor: '#00aaff',
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  shopTypeText: {
-    color: '#000',
-  },
-  uploadContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginTop: 5,
-  },
-  uploadIcon: {
-    width: 50,
-    height: 50,
-  },
-  button: {
-    backgroundColor: '#00aaff',
-    padding: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-    opacity: (props) => (props.disabled ? 0.6 : 1),
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  disabledButton: {
+    backgroundColor: '#9CA3AF',
   },
 });
 

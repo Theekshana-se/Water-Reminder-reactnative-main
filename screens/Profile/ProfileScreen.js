@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { account } from '../../lib/appwrite';
+import { account, deleteUser } from '../../lib/appwrite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from 'react-native-modal';
-
 
 import {
   fetchUserWaterConsumption,
@@ -30,6 +29,7 @@ const ProfileScreen = () => {
     weight: 'Loading...',
     age: 'Loading...',
     profilePic: defaultProfilePic,
+    accountId: null,
   });
 
   const [isModalVisible, setModalVisible] = useState(false);
@@ -58,7 +58,7 @@ const ProfileScreen = () => {
         const { email, phoneNumber, profilePic, username } = await fetchUserEmailAndPhone(accountId);
 
         setProfile({
-          intakeGoal: `${waterConsumption || 0} ml`,
+          intakeGoal: `${waterConsumption?.waterConsumption || 0} ml`,
           weight: `${weight || 'N/A'} kg`,
           age: `${age || 'N/A'}`,
           email: email || 'N/A',
@@ -67,10 +67,11 @@ const ProfileScreen = () => {
           wakeUpTime: wakeUpTime || 'N/A',
           bedtime: bedtime || 'N/A',
           profilePic: profilePic || defaultProfilePic,
+          accountId,
         });
       } catch (error) {
         console.error('Failed to load profile data:', error);
-        Alert.alert('Error', 'Failed to load profile data. Please log in again.');
+        Alert.alert('Error', error.message || 'Failed to load profile data. Please log in again.');
         navigation.navigate('Login'); // Redirect to login on failure
       }
     };
@@ -90,6 +91,33 @@ const ProfileScreen = () => {
       console.error('Logout error:', error);
       Alert.alert('Error', 'Failed to log out. Please try again.');
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (!profile.accountId) {
+                throw new Error('No account ID found.');
+              }
+              await deleteUser(profile.accountId);
+              Alert.alert('Success', 'Account deleted successfully');
+              navigation.navigate('Welcome');
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const toggleModal = () => {
@@ -118,27 +146,21 @@ const ProfileScreen = () => {
           <TouchableOpacity onPress={() => { navigation.navigate('DailyTips'); toggleModal(); }}>
             <Text style={styles.modalText}>Daily Tips</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { navigation.navigate('ShopRegistrationScreen1'); toggleModal(); }}>
+          <TouchableOpacity onPress={() => { navigation.navigate('LocationMapScreen'); toggleModal(); }}>
             <Text style={styles.modalText}>Join with Us</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { navigation.navigate('ContactUsScreen'); toggleModal(); }}>
             <Text style={styles.modalText}>Contact Us</Text>
           </TouchableOpacity>
-
           <TouchableOpacity onPress={() => { navigation.navigate('ChatScreen'); toggleModal(); }}>
             <Text style={styles.modalText}>Aqua ring</Text>
           </TouchableOpacity>
-          
           <TouchableOpacity onPress={() => { navigation.navigate('DiseaseWaterTracker'); toggleModal(); }}>
-            <Text style={styles.modalText}>disease</Text>
+            <Text style={styles.modalText}>Disease</Text>
           </TouchableOpacity>
-
           <TouchableOpacity onPress={() => { navigation.navigate('HydrationPlanTracker'); toggleModal(); }}>
-            <Text style={styles.modalText}>HydrationPlanTracker</Text>
+            <Text style={styles.modalText}>Hydration Plan Tracker</Text>
           </TouchableOpacity>
-
-          
-
         </View>
       </Modal>
 
@@ -198,6 +220,9 @@ const ProfileScreen = () => {
       <View style={styles.logoutButtonContainer}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>LOG OUT</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.logoutButton, { marginTop: 10 }]} onPress={handleDeleteAccount}>
+          <Text style={styles.logoutText}>DELETE ACCOUNT</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -307,5 +332,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
 export default ProfileScreen;

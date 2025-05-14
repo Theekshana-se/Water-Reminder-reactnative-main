@@ -1,161 +1,173 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ToastAndroid,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { Account } from 'appwrite';
-import { createShop, client } from '../../../lib/appwrite';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { createShop } from '../../../lib/appwrite';
 
-const ShopRegistrationScreen2 = () => {
+const ShopRegistrationScreen2 = ({ route }) => {
+  const { shopData, isWaterBottleShop } = route.params;
   const navigation = useNavigation();
-  const route = useRoute();
-  const account = new Account(client);
-  const { shopName, email, phoneNumber, address, hours, license, image, shopType, owner } = route.params;
-
-  const [location, setLocation] = useState({
-    latitude: 7.8731, // Default centered on Sri Lanka
-    longitude: 80.7718,
+  const [coords, setCoords] = useState({
+    latitude: 7.85,
+    longitude: 80.75,
+  });
+  const [formData, setFormData] = useState({
+    latitude: coords.latitude.toString(),
+    longitude: coords.longitude.toString(),
+    image: 'https://example.com/default-shop.jpg',
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const checkUserSession = async () => {
-    try {
-      const session = await account.get();
-      console.log('User session:', session);
-      return session;
-    } catch (error) {
-      console.error('No active session:', error);
-      return null;
-    }
+  console.log('ShopRegistrationScreen2 params:', { shopData, isWaterBottleShop });
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleMapPress = (event) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
-    setLocation({ latitude, longitude });
+  const handleMapPress = (e) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    setCoords({ latitude, longitude });
+    setFormData(prev => ({
+      ...prev,
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+    }));
   };
 
   const handleSubmit = async () => {
-    if (isNaN(location.latitude) || isNaN(location.longitude)) {
-      Alert.alert('Error', 'Please select a valid location on the map.');
-      return;
-    }
-
-    const user = await checkUserSession();
-    if (!user) {
-      Alert.alert('Authentication Required', 'Please log in to register a shop.', [
-        { text: 'OK', onPress: () => navigation.navigate('LoginScreen') }, // Adjust to your login screen
-      ]);
-      return;
-    }
-
-    const shopData = {
-      name: shopName,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      address,
-      phone: phoneNumber,
-      hours,
-      license,
-      image,
-      email,
-      owner, // Include owner for relationship (optional)
+    const finalShopData = {
+      ...shopData,
+      latitude: parseFloat(formData.latitude),
+      longitude: parseFloat(formData.longitude),
+      image: formData.image,
     };
 
     setIsLoading(true);
     try {
-      console.log('Submitting shop data:', shopData);
-      await createShop(shopData, shopType === 'waterBottle');
-      Alert.alert('Success', 'Shop registered successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('LocationMapScreen') },
-      ]);
+      console.log('Creating shop:', { finalShopData, isWaterBottleShop });
+      const newShop = await createShop(finalShopData, isWaterBottleShop);
+      ToastAndroid.show('Shop created successfully!', ToastAndroid.SHORT);
+      navigation.navigate('HomeOverview', { refresh: true });
     } catch (error) {
-      console.error('Submission error:', {
-        message: error.message,
-        code: error.code,
-        response: error.response,
-      });
-      let errorMessage = error.message || 'Unknown error';
-      if (error.message.includes('not authorized')) {
-        errorMessage = 'You do not have permission to register a shop. Please check your account permissions or contact support.';
-      }
-      Alert.alert('Error', `Failed to register shop: ${errorMessage}`);
+      console.error('Error creating shop:', error);
+      Alert.alert('Error', 'Failed to create shop. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} disabled={isLoading}>
-          <Icon name="arrow-back" size={24} color="#00aaff" />
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#0A73FF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shop Registration (2/2)</Text>
+        <Text style={styles.headerTitle}>Select Location</Text>
       </View>
 
-      <Text style={styles.subTitle}>Select your shop location</Text>
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          latitudeDelta: 4.0,
+          longitudeDelta: 2.5,
+        }}
+        onPress={handleMapPress}
+      >
+        <Marker coordinate={coords} />
+      </MapView>
 
-      <View style={styles.inputContainer}>
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: 7.8731,
-            longitude: 80.7718,
-            latitudeDelta: 2.0,
-            longitudeDelta: 2.0,
-          }}
-          onPress={handleMapPress}
+      <View style={styles.form}>
+        <Text style={styles.label}>Latitude</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.latitude}
+          onChangeText={text => handleInputChange('latitude', text)}
+          placeholder="Latitude"
+          keyboardType="numeric"
+        />
+
+        <Text style={styles.label}>Longitude</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.longitude}
+          onChangeText={text => handleInputChange('longitude', text)}
+          placeholder="Longitude"
+          keyboardType="numeric"
+        />
+
+        <TouchableOpacity
+          style={[styles.submitButton, isLoading && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={isLoading}
         >
-          <Marker coordinate={location} draggable onDragEnd={handleMapPress} />
-        </MapView>
+          <Text style={styles.submitButtonText}>
+            {isLoading ? 'Creating...' : 'Create Shop'}
+          </Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
-        <Text style={styles.buttonText}>{isLoading ? 'SUBMITTING...' : 'SUBMIT'}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f7',
-    padding: 20,
+    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 20,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#00aaff',
+    color: '#0A73FF',
     marginLeft: 10,
   },
-  subTitle: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 20,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
   map: {
-    height: 400,
-    borderRadius: 5,
+    height: 300,
   },
-  button: {
-    backgroundColor: '#00aaff',
+  form: {
+    padding: 20,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  submitButton: {
+    backgroundColor: '#0A73FF',
     padding: 15,
     borderRadius: 5,
     alignItems: 'center',
-    opacity: (props) => (props.disabled ? 0.6 : 1),
   },
-  buttonText: {
+  submitButtonText: {
     color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
   },
 });
 
