@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, Alert, ToastAndroid } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import Clipboard from '@react-native-community/clipboard';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -12,15 +12,7 @@ const ShopDetailsScreen = ({ route }) => {
   const [shop, setShop] = useState(initialShop);
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log('ShopDetailsScreen route params:', route.params);
-  console.log('ShopDetailsScreen initial shop data:', {
-    id: initialShop.$id,
-    name: initialShop.name,
-    isWaterBottleShop: initialShop.isWaterBottleShop,
-  });
-
   if (!initialShop.$id || initialShop.isWaterBottleShop === undefined) {
-    console.error('Invalid shop data in ShopDetailsScreen:', initialShop);
     Alert.alert('Error', 'Invalid shop data. Please try again.');
     navigation.goBack();
     return null;
@@ -31,16 +23,9 @@ const ShopDetailsScreen = ({ route }) => {
       const refreshShopData = async () => {
         setIsLoading(true);
         try {
-          console.log('Fetching shop data for ID:', initialShop.$id, 'isWaterBottleShop:', initialShop.isWaterBottleShop);
           const updatedShop = await fetchShopById(initialShop.$id, initialShop.isWaterBottleShop);
           setShop(updatedShop);
-          console.log('Updated shop data:', updatedShop);
         } catch (error) {
-          console.error('Error fetching shop:', {
-            message: error.message,
-            code: error.code,
-            shopId: initialShop.$id,
-          });
           if (error.code === 404) {
             Alert.alert('Error', 'Shop not found. It may have been deleted.');
             navigation.navigate('LocationMapScreen', { refresh: true });
@@ -60,24 +45,10 @@ const ShopDetailsScreen = ({ route }) => {
   };
 
   const handleEdit = () => {
-    const shopForEdit = {
-      $id: shop.$id,
-      name: shop.name,
-      address: shop.address,
-      phone: shop.phone,
-      email: shop.email,
-      hours: shop.hours,
-      license: shop.license,
-      latitude: shop.latitude,
-      longitude: shop.longitude,
-      image: shop.image,
-      isWaterBottleShop: shop.isWaterBottleShop,
-    };
-    console.log('Navigating to EditShopScreen with shop:', shopForEdit);
-    navigation.navigate('EditShopScreen', { shop: shopForEdit, refresh: true });
+    navigation.navigate('EditShopScreen', { shop, refresh: true });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     Alert.alert(
       'Delete Shop',
       `Are you sure you want to delete ${shop.name}?`,
@@ -88,21 +59,9 @@ const ShopDetailsScreen = ({ route }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('Attempting to delete shop:', {
-                id: shop.$id,
-                name: shop.name,
-                isWaterBottleShop: shop.isWaterBottleShop,
-              });
               await deleteShop(shop.$id, shop.isWaterBottleShop);
-              ToastAndroid.show('Shop deleted successfully!', ToastAndroid.SHORT);
               navigation.navigate('HomeOverview', { refresh: true });
-              //navigation.goBack({ refresh: true });
             } catch (error) {
-              console.error('Error deleting shop:', {
-                message: error.message,
-                code: error.code,
-                shopId: shop.$id,
-              });
               if (error.code === 404) {
                 Alert.alert('Error', 'Shop not found. It may have already been deleted.');
                 navigation.navigate('LocationMapScreen', { refresh: true });
@@ -116,144 +75,211 @@ const ShopDetailsScreen = ({ route }) => {
     );
   };
 
-  const copyToClipboard = (text) => {
-    Clipboard.setString(text);
-    ToastAndroid.show('Copied to clipboard!', ToastAndroid.SHORT);
+  const copyToClipboard = async (text) => {
+    try {
+      await Clipboard.setString(text);
+      Alert.alert('Success', 'Copied to clipboard!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy to clipboard.');
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const shopDetails = `
+Shop Details:
+Name: ${shop.name}
+Address: ${shop.address}
+Phone: ${shop.phone}
+Email: ${shop.email || 'Not specified'}
+Hours: ${shop.hours || 'Not specified'}
+License: ${shop.license || 'Not specified'}
+Type: ${shop.isWaterBottleShop ? 'Water Bottle Shop' : 'Water Filling Shop'}
+Location: (${shop.latitude}, ${shop.longitude})
+      `.trim();
+      await Clipboard.setString(shopDetails);
+      Alert.alert('Success', 'Shop details copied to clipboard!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy shop details.');
+    }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" translucent={false} backgroundColor="#fff" />
-      <View style={styles.headerContainer}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <Ionicons name="arrow-back" size={24} color="#0A73FF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1D4ED8" />
         </TouchableOpacity>
-        <Text style={styles.header}>{shop.name}</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleEdit} disabled={isLoading}>
-            <Ionicons name="pencil" size={24} color={isLoading ? '#ccc' : '#0A73FF'} />
+        <Text style={styles.headerTitle}>{shop.name}</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleEdit} disabled={isLoading} style={styles.actionButton}>
+            <Ionicons name="pencil" size={20} color={isLoading ? '#9CA3AF' : '#1D4ED8'} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={handleDelete} disabled={isLoading}>
-            <Ionicons name="trash" size={24} color={isLoading ? '#ccc' : '#FF3B30'} />
+          <TouchableOpacity onPress={handleDelete} disabled={isLoading} style={styles.actionButton}>
+            <Ionicons name="trash" size={20} color={isLoading ? '#9CA3AF' : '#EF4444'} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDownload} disabled={isLoading} style={styles.actionButton}>
+            <Ionicons name="download-outline" size={20} color={isLoading ? '#9CA3AF' : '#1D4ED8'} />
           </TouchableOpacity>
         </View>
       </View>
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1D4ED8" />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       ) : (
-        <>
-          <Image source={{ uri: shop.image }} style={styles.shopImage} />
-          <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Ionicons name="home-outline" size={20} color="#0A73FF" />
-              <Text style={styles.shopInfo}>{shop.name}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.emoji}>🏠</Text>
-              <Text style={styles.shopInfo}>{shop.address}</Text>
-              <TouchableOpacity onPress={() => copyToClipboard(shop.address)}>
-                <Ionicons name="copy-outline" size={20} color="#0A73FF" style={styles.copyIcon} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.emoji}>📞</Text>
-              <Text style={styles.shopInfo}>{shop.phone}</Text>
-              <TouchableOpacity onPress={() => copyToClipboard(shop.phone)}>
-                <Ionicons name="copy-outline" size={20} color="#0A73FF" style={styles.copyIcon} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.emoji}>⏰</Text>
-              <Text style={styles.shopInfo}>{shop.hours || 'Not specified'}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.emoji}>📄</Text>
-              <Text style={styles.shopInfo}>{shop.license || 'Not specified'}</Text>
-            </View>
+        <View style={styles.content}>
+          <Image source={{ uri: shop.image }} style={styles.shopImage} resizeMode="cover" />
+          <View style={styles.infoCard}>
+            <InfoItem
+              icon="store-outline"
+              label="Shop Name"
+              value={shop.name}
+            />
+            <InfoItem
+              icon="location-outline"
+              label="Address"
+              value={shop.address}
+              onCopy={() => copyToClipboard(shop.address)}
+            />
+            <InfoItem
+              icon="call-outline"
+              label="Phone"
+              value={shop.phone}
+              onCopy={() => copyToClipboard(shop.phone)}
+            />
+            <InfoItem
+              icon="time-outline"
+              label="Hours"
+              value={shop.hours || 'Not specified'}
+            />
+            <InfoItem
+              icon="document-text-outline"
+              label="License"
+              value={shop.license || 'Not specified'}
+            />
+            <InfoItem
+              icon="water-outline"
+              label="Type"
+              value={shop.isWaterBottleShop ? 'Water Bottle Shop' : 'Water Filling Shop'}
+            />
           </View>
-        </>
+        </View>
       )}
     </View>
   );
 };
 
+const InfoItem = ({ icon, label, value, onCopy }) => (
+  <View style={styles.infoItem}>
+    <View style={styles.infoContent}>
+      <Ionicons name={icon} size={20} color="#1D4ED8" style={styles.infoIcon} />
+      <View>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value}</Text>
+      </View>
+    </View>
+    {onCopy && (
+      <TouchableOpacity onPress={onCopy} style={styles.copyButton}>
+        <Ionicons name="copy-outline" size={20} color="#1D4ED8" />
+      </TouchableOpacity>
+    )}
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 10,
-  },
-  backButton: {
-    marginRight: 10,
+    backgroundColor: '#F3F4F6',
   },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0A73FF',
-    flex: 1,
-  },
-  headerButtons: {
     flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  headerButton: {
-    marginLeft: 15,
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
   },
   shopImage: {
-    width: '90%',
+    width: '100%',
     height: 200,
-    alignSelf: 'center',
-    marginTop: 20,
-    borderRadius: 10,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  infoContainer: {
-    marginTop: 20,
-    paddingHorizontal: 20,
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  infoRow: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  emoji: {
-    fontSize: 20,
-  },
-  shopInfo: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 10,
+  infoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  copyIcon: {
-    marginLeft: 10,
+  infoIcon: {
+    marginRight: 12,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#ccc',
-    marginVertical: 10,
+  infoLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  copyButton: {
+    padding: 8,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
   loadingText: {
+    marginTop: 8,
     fontSize: 16,
-    color: '#0A73FF',
+    color: '#1D4ED8',
   },
 });
 
